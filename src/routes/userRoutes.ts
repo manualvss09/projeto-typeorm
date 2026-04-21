@@ -3,12 +3,12 @@ import { UserController } from "../controller/userController";
 
 const router = Router();
 const userControler = new UserController();
-router.post("/", (req, res) => userControler.create(req, res));
-router.patch("/", (req, res) => userControler.listActive(req, res));
-router.patch("/:id", (req, res) => userControler.update(req, res));
-router.get("/", (req, res) => userControler.list(req, res));
-router.get("/:id", (req, res) => userControler.listById(req, res));
-router.get("/:id", (req, res) => userControler.toggleActive(req, res));
-router.delete("/:id", (req, res) => userControler.delete(req, res));
+router.post("/", userControler.create);
+router.patch("/:id/toggle", userControler.toggleActive);
+router.patch("/:id", userControler.update);
+router.get("/", userControler.list);
+router.get("/active", userControler.listActive);
+router.get("/:id", userControler.listById);
+router.delete("/:id", userControler.delete);
 
-export const userRouter = router;
+export const userRoutes = router;

@@ -1,12 +1,13 @@
 import { FindRelationsNotFoundError } from "typeorm";
 import { AppDataSource } from "../data-source";
 import { User } from "../entity/User";
-import type { Request, Response } from "express";
+import type { NextFunction, Request, Response } from "express";
+import { BadRequestError, NotFoundError } from "../helpers/apiError";
 
 export class UserController {
   private userRepository = AppDataSource.getRepository(User);
 
-  async create(req: Request, res: Response) {
+  create = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { firstName, lastName } = req.body;
       const newUser = this.userRepository.create({ firstName, lastName });
@@ -14,99 +15,74 @@ export class UserController {
       await this.userRepository.save(newUser);
       return res.status(201).json(newUser);
     } catch (error: unknown) {
-      if (error instanceof Error) {
-        return res.status(400).json({ error: error.message });
-      }
-      return res
-        .status(500)
-        .json({ error: "Ocorreu um erro inesperado ao criar o usuário." });
+      next(error);
     }
-  }
-  async update(req: Request, res: Response) {
+  };
+  update = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const id = Number(req.params.id);
       const { firstName, lastName } = req.body;
       if (isNaN(id)) {
-        res.status(400).json({ message: "ID inválido" });
+        throw new BadRequestError("ID inválido");
       }
       const user = await this.userRepository.findOneBy({ id });
       if (!user) {
-        res.status(404).json({ message: "ID inválido" });
+        throw new NotFoundError("Usuário não encontrado!");
       }
       user.firstName = firstName ?? user.firstName;
       user.lastName = lastName ?? user.lastName;
       await this.userRepository.save(user);
       return res.json(user);
     } catch (error: unknown) {
-      if (error instanceof Error) {
-        return res.status(400).json({ error: error.message });
-      }
-      return res.status(500).json({
-        error: "Ocorreu um erro inesperado ao atualizar os usuários.",
-      });
+      next(error);
     }
-  }
+  };
 
-  async list(req: Request, res: Response) {
+  list = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const users = await this.userRepository.find();
       return res.json(users);
     } catch (error: unknown) {
-      if (error instanceof Error) {
-        return res.status(400).json({ error: error.message });
-      }
-      return res
-        .status(500)
-        .json({ error: "Ocorreu um erro inesperado ao listar os usuários." });
+      next(error);
     }
-  }
+  };
 
-  async listActive(req: Request, res: Response) {
+  listActive = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const users = await this.userRepository.findBy({
         isActive: true,
       });
       return res.json(users);
     } catch (error: unknown) {
-      if (error instanceof Error) {
-        return res.status(400).json({ error: error.message });
-      }
-      return res
-        .status(500)
-        .json({ error: "Ocorreu um erro inesperado ao listar os usuários." });
+      next(error);
     }
-  }
+  };
 
-  async listById(req: Request, res: Response) {
+  listById = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const id = Number(req.params.id);
       if (isNaN(id)) {
-        res.status(400).json({ message: "ID inválido" });
+        throw new BadRequestError("ID inválido");
       }
       const user = await this.userRepository.findOneBy({ id });
       if (!user) {
-        res.status(404).json({ message: "Usuário não encontrado!" });
+        throw new NotFoundError("Usuário não encontrado!");
       }
       return res.json(user);
     } catch (error: unknown) {
-      if (error instanceof Error) {
-        return res.status(400).json({ error: error.message });
-      }
-      return res
-        .status(500)
-        .json({ error: "Ocorreu um erro inesperado ao listar o usuário." });
+      next(error);
     }
-  }
+  };
 
-  async delete(req: Request, res: Response) {
+  delete = async (req: Request, res: Response, nex: NextFunction) => {
     try {
       const id = Number(req.params.id);
       if (isNaN(id)) {
-        res.status(400).json({ message: "ID inválido" });
+        throw new BadRequestError("ID inválido");
       }
       const result = await this.userRepository.delete(id);
       if (result.affected === 0) {
-        res.status(404).json({ message: "Usuário não foi encontrado" });
+        throw new NotFoundError("Usuário não encontrado!");
       }
       return res.status(204).send();
     } catch (error: unknown) {
@@ -117,16 +93,16 @@ export class UserController {
     return res
       .status(500)
       .json({ error: "Ocorreu um erro inesperado ao deletar os usuários." });
-  }
-  async toggleActive(req: Request, res: Response) {
+  };
+  toggleActive = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const id = Number(req.params.id);
       if (isNaN(id)) {
-        res.status(400).json({ message: "ID inválido" });
+        throw new BadRequestError("ID inválido");
       }
       const user = await this.userRepository.findOneBy({ id });
       if (!user) {
-        res.status(404).json({ message: "Usuário não encontrado!" });
+        throw new NotFoundError("Usuário não encontrado!");
       }
       user.isActive = !user.isActive;
       await this.userRepository.save(user);
@@ -137,12 +113,7 @@ export class UserController {
         user,
       });
     } catch (error: unknown) {
-      if (error instanceof Error) {
-        return res.status(400).json({ error: error.message });
-      }
-      return res
-        .status(500)
-        .json({ error: "Ocorreu um erro inesperado ao listar o usuário." });
+      next(error);
     }
-  }
+  };
 }
