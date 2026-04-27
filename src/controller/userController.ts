@@ -85,6 +85,7 @@ export class UserController {
       next(error);
     }
   };
+
   list = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const users = await this.userRepository.find();

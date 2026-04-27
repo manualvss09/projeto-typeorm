@@ -28,6 +28,8 @@ export class User {
   @Column({ type: "boolean", default: true })
   isActive!: boolean;
 
+  // Um usuário pode ter muitos posts
+
   @OneToMany(() => Post, (post) => post.user)
   posts: Post[];
 }
