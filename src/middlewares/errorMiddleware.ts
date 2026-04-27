@@ -9,5 +9,7 @@ export const errorMiddleware = (
 ) => {
   const statusCode = error.statusCode ?? 500;
   const message = error.message ?? "Erro interno do servidor";
-  return res.status(statusCode).json({ message });
+  const errors = error.errors ? error.errors : undefined;
+
+  return res.status(statusCode).json({ message, errors });
 };

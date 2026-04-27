@@ -2,7 +2,11 @@ POST http://localhost:3000/api/posts
 Content-Type: application/json
 
 {
-    "title": "Meu segundo post",
+    "title": "Meu terceiro post",
     "content": "conteúdo do post",
-    "userID": 3
+    "userID": 9999
 }
+
+### 
+
+GET http://localhost:3000/api/posts

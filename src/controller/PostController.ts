@@ -1,46 +1,98 @@
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import { AppDataSource } from "../data-source";
 import { Post } from "../entity/Post";
 import { User } from "../entity/User";
+import { BadRequestError, NotFoundError } from "../helpers/apiError";
+import { validate } from "class-validator";
+import { IValidationError } from "../types/IValidationError";
+import { error } from "node:console";
+import { formatErrors } from "../helpers/formatErrors";
 
 export class PostController {
   private postRepository = AppDataSource.getRepository(Post);
   private userRepository = AppDataSource.getRepository(User);
 
-  async list(req: Request, res: Response) {
+  list = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const posts = await this.postRepository.find({
-        relations: ["user"],
-      });
+      const posts = await this.postRepository.find({ relations: ["user"] });
       return res.json(posts);
     } catch (error: unknown) {
-      if (error instanceof Error) {
-        return res.status(400).json({ error: error.message });
-      }
-      return res
-        .status(500)
-        .json({ error: "Ocorreu um erro inesperado ao listar os posts." });
+      next(error);
     }
-  }
+  };
 
-  async create(req: Request, res: Response) {
+  create = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { title, content, userId } = req.body;
       if (isNaN(userId)) {
-        return res.status(400).json({ message: "Id do usuário inválido" });
+        throw new BadRequestError("ID do usuário inválido");
       }
       const user = await this.userRepository.findOneBy({ id: userId });
       if (!user) {
-        return res.status(404).json({ message: "Usuário não encontrado." });
+        throw new NotFoundError("Usuário não encontrado!");
       }
       const newPost = this.postRepository.create({ title, content, user });
+      const errors = await validate(newPost);
+      if (errors.length > 0) {
+        const formattedErrors: IValidationError[] = errors.map((error) => ({
+          field: error.property,
+          messages: Object.values(error.constraints ?? {}),
+        }));
+        throw new BadRequestError("Falha de validação", formattedErrors);
+      }
       await this.postRepository.save(newPost);
       return res.status(201).json(newPost);
     } catch (error: unknown) {
-      if (error instanceof Error) {
-        return res.status(400).json({ error: error.message });
-      }
-      return res.status(500).json({ error: "Erro interno do servidor" });
+      next(error);
     }
-  }
+  };
+  update = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const id: number = Number(req.params.id);
+      if (isNaN(id)) {
+        throw new BadRequestError("ID Inválido");
+      }
+      const updatedPost = req.body;
+
+      const post = await this.postRepository.findOneBy({ id });
+      if (!post) {
+        throw new NotFoundError("Post não encontrado");
+      }
+
+      post.title = updatedPost.title ?? post.title;
+      post.content = updatedPost.content ?? post.content;
+
+      const errors = await validate(post);
+      if (errors.length > 0) {
+        const formattedErrors = formatErrors(errors);
+        throw new BadRequestError("Falha de validação", formattedErrors);
+      }
+
+      const updated = await this.postRepository.save(post);
+      return res
+        .status(200)
+        .json({ message: "Post atualizado com sucesso", post: updated });
+    } catch (error: unknown) {
+      next(error);
+    }
+  };
+
+  delete = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const id: number = Number(req.params.id);
+      if (isNaN(id)) {
+        throw new BadRequestError("ID inválido");
+      }
+
+      const post = await this.postRepository.findOneBy({ id });
+      if (!post) {
+        throw new NotFoundError("Post não encontrado");
+      }
+
+      await this.postRepository.delete(id);
+      return res.status(204).send();
+    } catch (error: unknown) {
+      next(error);
+    }
+  };
 }

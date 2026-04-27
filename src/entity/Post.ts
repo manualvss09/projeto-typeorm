@@ -1,5 +1,6 @@
 import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
 import { User } from "./User";
+import { IsNotEmpty, IsString, MinLength } from "class-validator";
 
 @Entity()
 export class Post {
@@ -7,9 +8,14 @@ export class Post {
   id!: number;
 
   @Column("varchar")
+  @IsNotEmpty({ message: "Título é obrigatório!" })
+  @IsString({ message: "Título precisa ser um texto" })
+  @MinLength(5, { message: "Título deve ter pelo menos 5 caractéres" })
   title!: string;
 
   @Column("text")
+  @IsNotEmpty({ message: "Conteúdo é obrigatório!" })
+  @IsString({ message: "Conteúdo precisa ser um texto" })
   content!: string;
 
   // Um usuário pode ter muitos posts
