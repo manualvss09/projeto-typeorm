@@ -11,32 +11,73 @@ export class UserController {
 
   create = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { firstName, lastName } = req.body;
-      const newUser = this.userRepository.create({ firstName, lastName });
+      const { firstName, lastName, email } = req.body;
+
+      // Verificar se e-mail já existe
+      const existingUser = await this.userRepository.findOne({
+        where: { email },
+      });
+
+      if (existingUser) {
+        throw new BadRequestError("E-mail já está em uso");
+      }
+
+      const newUser = this.userRepository.create({
+        firstName,
+        lastName,
+        email,
+      });
+
       const errors = await validate(newUser);
+
       if (errors.length > 0) {
         const formattedErrors = formatErrors(errors);
         throw new BadRequestError("Falha de validação", formattedErrors);
       }
+
       await this.userRepository.save(newUser);
       return res.status(201).json(newUser);
     } catch (error: unknown) {
       next(error);
     }
   };
+
   update = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const id = Number(req.params.id);
-      const { firstName, lastName } = req.body;
+      const { firstName, lastName, email } = req.body;
+
       if (isNaN(id)) {
         throw new BadRequestError("ID inválido");
       }
+
       const user = await this.userRepository.findOneBy({ id });
+
       if (!user) {
         throw new NotFoundError("Usuário não encontrado!");
       }
+
+      // Verificar se o e-mail já está sendo usado por outro usuário
+      if (email) {
+        const existingUser = await this.userRepository.findOne({
+          where: { email },
+        });
+
+        if (existingUser && existingUser.id !== user.id) {
+          throw new BadRequestError("E-mail já está em uso");
+        }
+      }
+
       user.firstName = firstName ?? user.firstName;
       user.lastName = lastName ?? user.lastName;
+      user.email = email ?? user.email;
+
+      const errors = await validate(user);
+
+      if (errors.length > 0) {
+        const formattedErrors = formatErrors(errors);
+        throw new BadRequestError("Falha de validação", formattedErrors);
+      }
 
       await this.userRepository.save(user);
       return res.json(user);
@@ -44,7 +85,6 @@ export class UserController {
       next(error);
     }
   };
-
   list = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const users = await this.userRepository.find();
